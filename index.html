@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackbox AI Voice Assistant - FIXED</title>
+    <style>
+        /* SAME BEAUTIFUL STYLES - NO CHANGES */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #000000 0%, #0a3d0a 25%, #1a5c1a 50%, #0a3d0a 75%, #000000 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 80%, rgba(0, 255, 127, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, rgba(0, 255, 0, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+            animation: bgPulse 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgPulse {
+            0% { opacity: 0.7; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+
+        .assistant-container {
+            background: rgba(0, 30, 0, 0.95);
+            backdrop-filter: blur(25px);
+            border: 2px solid rgba(0, 255, 127, 0.3);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 25px 60px rgba(0, 255, 127, 0.3), 
+                        inset 0 0 30px rgba(0, 255, 127, 0.1);
+            width: 90%;
+            max-width: 550px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            animation: containerGlow 2s ease-out;
+        }
+
+        @keyframes containerGlow {
+            from { opacity: 0; transform: translateY(40px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .avatar {
+            width: 130px;
+            height: 130px;
+            background: linear-gradient(45deg, #00ff7f, #00ff00, #7fff00);
+            border-radius: 50%;
+            margin: 0 auto 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 56px;
+            color: #000;
+            box-shadow: 0 20px 40px rgba(0, 255, 127, 0.5);
+            animation: avatarPulse 2.5s infinite;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes avatarPulse {
+            0%, 100% { box-shadow: 0 20px 40px rgba(0, 255, 127, 0.5); transform: scale(1); }
+            50% { box-shadow: 0 30px 60px rgba(0, 255, 127, 0.8); transform: scale(1.08); }
+        }
+
+        .status {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            text-shadow: 0 0 10px rgba(0, 255, 127, 0.5);
+            min-height: 24px;
+        }
+
+        .status.error { color: #ff6b6b; text-shadow: 0 0 15px #ff6b6b; }
+        .status.permission { color: #ffaa00; text-shadow: 0 0 15px #ffaa00; animation: pulseWarning 2s infinite; }
+        @keyframes pulseWarning { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+        .listening .status { color: #00ff7f !important; animation: statusBlink 1s infinite; text-shadow: 0 0 20px #00ff7f; }
+        @keyframes statusBlink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.6; } }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 25px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mic-btn {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff007f, #ff4d94);
+            color: white;
+            font-size: 28px;
+            box-shadow: 0 15px 35px rgba(255, 0, 127, 0.4);
+            border: 3px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .mic-btn:hover:not(:disabled) { transform: scale(1.15); box-shadow: 0 20px 45px rgba(255, 0, 127, 0.6); }
+        .mic-btn.listening { background: linear-gradient(45deg, #00ff7f, #00ff00); animation: micPulse 0.6s infinite; box-shadow: 0 0 40px rgba(0, 255, 127, 0.8); border-color: rgba(0, 255, 127, 0.5); }
+        @keyframes micPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+
+        .speak-btn {
+            background: linear-gradient(45deg, #00ff7f, #7fff00);
+            color: #000;
+            box-shadow: 0 10px 25px rgba(0, 255, 127, 0.4);
+            min-width: 140px;
+        }
+
+        .speak-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(0, 255, 127, 0.6); }
+        .speak-btn.active { background: linear-gradient(45deg, #ff6b9d, #ff1493); color: white; animation: speakGlow 1s infinite alternate; }
+        @keyframes speakGlow { from { box-shadow: 0 10px 25px rgba(255, 107, 157, 0.6); } to { box-shadow: 0 15px 40px rgba(255, 20, 147, 0.8); } }
+
+        .lang-toggle {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-size: 14px;
+            padding: 12px 20px;
+        }
+
+        .lang-toggle:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5); }
+
+        .btn:disabled {
+            background: #333 !important;
+            color: #666 !important;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .permission-info {
+            background: rgba(255, 170, 0, 0.2);
+            border: 1px solid rgba(255, 170, 0, 0.5);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #ffaa00;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .chat-container {
+            height: 320px;
+            overflow-y: auto;
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(0, 50, 0, 0.6);
+            border-radius: 25px;
+            text-align: left;
+            border: 1px solid rgba(0, 255, 127, 0.2);
+            scrollbar-width: thin;
+            scrollbar-color: #00ff7f #1a1a1a;
+        }
+
+        .chat-container::-webkit-scrollbar { width: 6px; }
+        .chat-container::-webkit-scrollbar-track { background: rgba(0, 50, 0, 0.5); border-radius: 10px; }
+        .chat-container::-webkit-scrollbar-thumb { background: #00ff7f; border-radius: 10px; }
+
+        .message {
+            margin: 12px 0;
+            padding: 15px 22px;
+            border-radius: 25px;
+            max-width: 90%;
+            word-wrap: break-word;
+            animation: slideIn 0.4s ease-out;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .user-message {
+            background: linear-gradient(45deg, #ff007f, #ff4d94);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+            box-shadow: 0 8px 25px rgba(255, 0, 127, 0.4);
+        }
+
+        .ai-message {
+            background: linear-gradient(45deg, #00ff7f, #7fff00);
+            color: #000;
+            margin-right: auto;
+            font-weight: 500;
+            box-shadow: 0 8px 25px rgba(0, 255, 127, 0.3);
+        }
+
+        .commands {
+            font-size: 13px;
+            color: #00ff7f;
+            margin-top: 20px;
+            line-height: 1.6;
+            text-shadow: 0 0 10px rgba(0, 255, 127, 0.5);
+        }
+
+        .commands span {
+            background: rgba(0, 255, 127, 0.2);
+            padding: 6px 12px;
+            border-radius: 15px;
+            margin: 3px;
+            font-size: 12px;
+            border: 1px solid rgba(0, 255, 127, 0.3);
+        }
+
+        @media (max-width: 480px) {
+            .assistant-container { padding: 30px 20px; margin: 20px; }
+            .controls { flex-direction: column; align-items: center; }
+            .mic-btn { width: 80px; height: 80px; font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="assistant-container" id="assistant">
+        <div class="avatar" id="avatar">🤖</div>
+        <div class="status" id="status">Initializing... | आरंभ हो रहा है...</div>
+        
+        <div id="permissionInfo" class="permission-info" style="display: none;">
+            🔊 <strong>Microphone Permission Required!</strong><br>
+            Click any button to enable microphone. <strong>HTTPS required</strong> for full functionality.
+        </div>
+        
+        <div class="controls">
+            <button class="btn mic-btn" id="micButton" title="Single listen (Spacebar)">🎤</button>
+            <button class="btn speak-btn" id="speakButton" title="Continuous listening">Speak Now</button>
+            <button class="btn lang-toggle" id="langToggle">🇮🇳 Hindi / English</button>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="message ai-message">🎉 Blackbox AI Voice Assistant Ready!<br>Click 🎤 or press Spacebar to start speaking.</div>
+        </div>
+        <div class="commands">
+            Try: <span>"Kya haal hai?"</span> <span>"Time kya hai?"</span> 
+            <span>"15*23 kitna hai?"</span> <span>"Joke sunao"</span>
+            <span>"What's the time?"</span> <span>"Tell me a joke"</span>
+        </div>
+    </div>
+
+    <script>
+        class BlackboxVoiceAssistantFIXED {
+            constructor() {
+                this.hasPermission = false;
+                this.recognition = null;
+                this.synthesis = window.speechSynthesis;
+                this.isListening = false;
+                this.continuousMode = false;
+                this.currentLang = 'en-US';
+                this.chatHistory = [];
+                this.timer = null;
+                
+                this.init();
+            }
+
+            async init() {
+                await this.checkHTTPS();
+                this.initSpeechRecognition();
+                this.initElements();
+                this.testSpeechSynthesis();
+                this.speak("Blackbox AI ready! Click microphone to start.");
+            }
+
+            async checkHTTPS() {
+                if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                    this.showPermissionInfo("⚠️ HTTPS required for microphone! Use GitHub Pages, Netlify, or localhost.");
+                    return false;
+                }
+                return true;
+            }
+
+            initElements() {
+                this.micButton = document.getElementById('micButton');
+                this.speakButton = document.getElementById('speakButton');
+                this.langToggle = document.getElementById('langToggle');
+                this.status = document.getElementById('status');
+                this.chatContainer = document.getElementById('chatContainer');
+                this.assistant = document.getElementById('assistant');
+                this.permissionInfo = document.getElementById('permissionInfo');
+
+                this.micButton.addEventListener('click', () => this.requestPermissionAndListen());
+                this.speakButton.addEventListener('click', () => this.toggleContinuous());
+                this.langToggle.addEventListener('click', () => this.toggleLanguage());
+            }
+
+            async requestPermissionAndListen() {
+                try {
+                    // Request microphone permission explicitly
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop()); // Stop immediately after permission
+                    
+                    this.hasPermission = true;
+                    this.permissionInfo.style.display = 'none';
+                    this.singleListen();
+                    
+                    this.addMessage("✅ Microphone access granted! You can now speak.", 'ai');
+                    
+                } catch (error) {
+                    console.error('Permission denied:', error);
+                    this.showPermissionError("❌ Microphone access denied. Please allow in browser settings.");
+                }
+            }
+
+            initSpeechRecognition() {
+                const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+                if (!SpeechRecognition) {
+                    this.showPermissionError("❌ Speech Recognition not supported in this browser. Use Chrome/Edge.");
+                    return;
+                }
+
+                this.recognition = new SpeechRecognition();
+                this.recognition.continuous = false;
+                this.recognition.interimResults = false;
+                this.recognition.lang = this.currentLang;
+                
+                this.recognition.onstart = () => this.onListeningStart();
+                this.recognition.onresult = (event) => this.onSpeechResult(event);
+                this.recognition.onend = () => this.onListeningEnd();
+                this.recognition.onerror = (event) => this.onSpeechError(event);
+            }
+
+            singleListen() {
+                if (!this.hasPermission || !this.recognition) {
+                    this.requestPermissionAndListen();
+                    return;
+                }
+                this.continuousMode = false;
+                this.speakButton.classList.remove('active');
+                this.recognition.start();
+            }
+
+            toggleContinuous() {
+                if (!this.hasPermission || !this.recognition) {
+                    this.requestPermissionAndListen();
+                    return;
+                }
+                
+                this.continuousMode = !this.continuousMode;
+                if (this.continuousMode) {
+                    this.speakButton.classList.add('active');
+                    this.speakButton.textContent = '🛑 Stop Listening';
+                    this.recognition.start();
+                } else {
+                    this.speakButton.classList.remove('active');
+                    this.speakButton.textContent = 'Speak Continuously';
+                    this.recognition.stop();
+                }
+            }
+
+            toggleLanguage() {
+                this.currentLang = this.currentLang === 'en-US' ? 'hi-IN' : 'en-US';
+                if (this.recognition) this.recognition.lang = this.currentLang;
+                this.updateStatus();
+                this.langToggle.textContent = this.currentLang === 'hi-IN' ? 
+                    '🇺🇸 English / Hindi' : '🇮🇳 Hindi / English';
+            }
+
+            updateStatus() {
+                const isHindi = this.currentLang === 'hi-IN';
+                this.status.className = `status`;
+                this.status.textContent = isHindi ? 'बोलिए! | Speak!' : 'Speak now! | बोलिए!';
+            }
+
+            onListeningStart() {
+                this.isListening = true;
+                this.assistant.classList.add('listening');
+                this.status.textContent = this.currentLang === 'hi-IN' ? 'सुन रहा हूँ...' : 'Listening... 🔴';
+                this.micButton.textContent = '🔴';
+            }
+
+            onSpeechResult(event) {
+                const transcript = event.results[0][0].transcript.trim();
+                this.addMessage(`🎤 ${transcript}`, 'user');
+                this.processCommand(transcript);
+            }
+
+            onListeningEnd() {
+                this.isListening = false;
+                this.assistant.classList.remove('listening');
+                this.micButton.textContent = '🎤';
+                
+                if (this.continuousMode && this.hasPermission) {
+                    setTimeout(() => {
+                        if (this.continuousMode) this.recognition.start();
+                    }, 300);
+                } else {
+                    this.status.textContent = this.currentLang === 'hi-IN' ? 
+                        'फिर बोलिए! | Speak again!' : 'Ready! Click 🎤 or Spacebar';
+                }
+            }
+
+            onSpeechError(event) {
+                console.error('Speech error:', event.error);
+                if (event.error === 'not-allowed') {
+                    this.showPermissionError("❌ Microphone blocked. Enable in browser settings.");
+                } else if (this.continuousMode) {
+                    setTimeout(() => this.recognition.start(), 1000);
+                }
+            }
+
+            async processCommand(command) {
+                this.status.textContent = this.currentLang === 'hi-IN' ? 'सोच रहा हूँ...' : 'Thinking... 💭';
+                await new Promise(resolve => setTimeout(resolve, 600));
+                
+                const response = this.getSmartResponse(command);
+                this.addMessage(response, 'ai');
+                this.speak(response);
+                this.status.textContent = 'Ready! 🎉';
+            }
+
+            // SAME SMART RESPONSES - NO CHANGE
+            getSmartResponse(input) {
+                const text = input.toLowerCase();
+                const isHindi = this.currentLang === 'hi-IN';
+
+                if (this.wakeWords.some(word => text.includes(word))) {
+                    return isHindi ? "जी हाँ! कैसे मदद करूँ?" : "Yes! How can I help?";
+                }
+
+                if (text.includes('hello') || text.includes('hi') || text.includes('नमस्ते')) {
+                    return isHindi ? "नमस्ते! आपका दिन कैसा चल रहा है?" : "Hello! How's your day going?";
+                }
+
+                if (text.includes('how are') || text.includes('kya haal') || text.includes('कैसा')) {
+                    return isHindi ? "मैं बिल्कुल ठीक हूँ! आप कैसे हैं?" : "I'm doing great! How are you?";
+                }
+
+                if (text.includes('time') || text.includes('samay') || text.includes('समय')) {
+                    return `अभी समय है ${new Date().toLocaleTimeString('hi-IN')}`;
+                }
+
+                const mathMatch = text.match(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)/);
+                if (mathMatch) {
+                    const [, a, op, b] = mathMatch;
+                    const num1 = parseFloat(a), num2 = parseFloat(b);
+                    let result;
+                    switch(op) {
+                        case '+': result = num1 + num2; break;
+                        case '-': result = num1 - num2; break;
+                        case '*': result = num1 * num2; break;
+                        case '/': result = num1 / num2; break;
+                    }
+                    return isHindi ? `${num1} ${op} ${num2} = ${result.toFixed(2)}` : `${num1} ${op} ${num2} equals ${result.toFixed(2)}`;
+                }
+
+                const timerMatch = text.match(/(\d+)\s*(min|minute|मिनट)/);
+                if (timerMatch) {
+                    const minutes = parseInt(timerMatch[1]);
+                    this.setTimer(minutes);
+                    return isHindi ? `${minutes} मिनट का टाइमर सेट!` : `Timer set for ${minutes} minutes!`;
+                }
+
+                if (text.includes('joke') || text.includes('मजाक')) {
+                    const jokes = isHindi ? [
+                        "एक आदमी डॉक्टर के पास गया। डॉक्टर: 'आप्हें क्या समस्या है?' आदमी: 'मुझे लगता है मैं कुत्ता हूँ!' 😂"
+                    ] : ["Why don't scientists trust atoms? Because they make up everything! 😂"];
+                    return jokes[Math.floor(Math.random() * jokes.length)];
+                }
+
+                const fallbacks = isHindi ? [
+                    "बहुत अच्छा! और बताइए?", "समझ गया! आगे क्या?", "मैं सुन रहा हूँ!"
+                ] : ["That's interesting!", "Got it!", "I'm listening!"];
+                
+                return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+            }
+
+            setTimer(minutes) {
+                clearTimeout(this.timer);
+                const ms = minutes * 60 * 1000;
+                this.timer = setTimeout(() => {
+                    const alertMsg = this.currentLang === 'hi-IN' ? '⏰ टाइमर समाप्त!' : '⏰ Timer finished!';
+                    this.speak(alertMsg);
+                    this.addMessage(alertMsg, 'ai');
+                }, ms);
+            }
+
+            addMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                messageDiv.innerHTML = text;
+                this.chatContainer.appendChild(messageDiv);
+                this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+            }
+
+            speak(text) {
+                if (this.synthesis.speaking) this.synthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.95;
+                utterance.pitch = 1.05;
+                utterance.volume = 0.9;
+                utterance.lang = this.currentLang;
+                this.synthesis.speak(utterance);
+            }
+
+            showPermissionInfo(msg) {
+                this.permissionInfo.style.display = 'block';
+                this.permissionInfo.innerHTML = msg;
+                this.status.textContent = 'Permission needed | अनुमति चाहिए';
+                this.status.className = 'status permission';
+            }
+
+            showPermissionError(msg) {
+                this.permissionInfo.style.display = 'block';
+                this.permissionInfo.innerHTML = msg;
+                this.status.textContent = 'Error! | त्रुटि!';
+                this.status.className = 'status error';
+            }
+
+            testSpeechSynthesis() {
+                if (speechSynthesis.getVoices().length === 0) {
+                    speechSynthesis.onvoiceschanged = () => {};
+                }
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            new BlackboxVoiceAssistantFIXED();
+        });
+
+        // Global spacebar listener
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                document.getElementById('micButton').click();
+            }
+        });
+    </script>
+</body>
+</html>
