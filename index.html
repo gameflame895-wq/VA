@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast Voice Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 50%, #0066cc 100%);
+            overflow: hidden;
+        }
+
+        .container {
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 25px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d4ff, #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .status {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            color: #00d4ff;
+            font-weight: 500;
+        }
+
+        .response-area {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 120px;
+            max-height: 200px;
+            overflow-y: auto;
+            color: #fff;
+            font-size: 1.1em;
+            line-height: 1.5;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .mic-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            font-size: 2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .mic-listening {
+            background: linear-gradient(45deg, #ff4444, #ff6666);
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 0 30px rgba(255, 68, 68, 0.6);
+        }
+
+        .mic-idle {
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            color: white;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .mic-idle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .lang-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            color: white;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .lang-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .lang-btn.active {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+        }
+
+        .clear-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .mic-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🗣️ VoiceAI</div>
+        <div class="status" id="status">Click microphone to start speaking</div>
+        <div class="response-area" id="response"></div>
+        
+        <div class="controls">
+            <button class="mic-btn mic-idle" id="micBtn" title="Click to speak/stop">
+                🎤
+            </button>
+            <button class="lang-btn active" id="enBtn" data-lang="en">English</button>
+            <button class="lang-btn" id="hiBtn" data-lang="hi">हिंदी</button>
+            <button class="clear-btn" id="clearBtn">Clear</button>
+        </div>
+    </div>
+
+    <script>
+        class VoiceAssistant {
+            constructor() {
+                this.recognition = null;
+                this.isListening = false;
+                this.currentLang = 'en';
+                this.translations = {
+                    en: {
+                        status_idle: "Click microphone to start speaking",
+                        status_listening: "🎤 Listening... Speak now!",
+                        status_processing: "🤔 Processing your voice...",
+                        mic_title_listen: "Click to speak/stop",
+                        mic_title_stop: "Listening... Click to stop"
+                    },
+                    hi: {
+                        status_idle: "माइक्रोफोन पर क्लिक करके बोलना शुरू करें",
+                        status_listening: "🎤 सुन रहे हैं... अभी बोलें!",
+                        status_processing: "🤔 आपकी आवाज़ प्रोसेस कर रहे हैं...",
+                        mic_title_listen: "बोलने के लिए क्लिक करें/रोकें",
+                        mic_title_stop: "सुन रहे हैं... रोकने के लिए क्लिक करें"
+                    }
+                };
+                
+                this.init();
+            }
+
+            init() {
+                // Check browser support
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    document.getElementById('status').textContent = 'Speech recognition not supported in this browser';
+                    return;
+                }
+
+                // Initialize speech recognition
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                this.recognition = new SpeechRecognition();
+                
+                this.recognition.continuous = true;
+                this.recognition.interimResults = true;
+                this.recognition.lang = this.currentLang === 'en' ? 'en-US' : 'hi-IN';
+
+                this.recognition.onstart = () => this.onStart();
+                this.recognition.onresult = (event) => this.onResult(event);
+                this.recognition.onend = () => this.onEnd();
+                this.recognition.onerror = (event) => this.onError(event);
+
+                // Event listeners
+                document.getElementById('micBtn').addEventListener('click', () => this.toggleListening());
+                document.getElementById('enBtn').addEventListener('click', () => this.switchLanguage('en'));
+                document.getElementById('hiBtn').addEventListener('click', () => this.switchLanguage('hi'));
+                document.getElementById('clearBtn').addEventListener('click', () => this.clearResponse());
+
+                // Auto-scroll response area
+                const responseArea = document.getElementById('response');
+                responseArea.addEventListener('DOMNodeInserted', () => {
+                    responseArea.scrollTop = responseArea.scrollHeight;
+                });
+            }
+
+            toggleListening() {
+                if (this.isListening) {
+                    this.recognition.stop();
+                } else {
+                    this.recognition.start();
+                }
+            }
+
+            switchLanguage(lang) {
+                this.currentLang = lang;
+                this.recognition.lang = lang === 'en' ? 'en-US' : 'hi-IN';
+                
+                // Update button states
+                document.querySelectorAll('.lang-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.lang === lang);
+                });
+
+                // Update status
+                this.updateStatus('idle');
+            }
+
+            onStart() {
+                this.isListening = true;
+                const micBtn = document.getElementById('micBtn');
+                const status = document.getElementById('status');
+                
+                micBtn.className = 'mic-btn mic-listening';
+                micBtn.title = this.translations[this.currentLang].mic_title_stop;
+                status.textContent = this.translations[this.currentLang].status_listening;
+            }
+
+            onResult(event) {
+                let finalTranscript = '';
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                if (finalTranscript) {
+                    this.processCommand(finalTranscript);
+                }
+            }
+
+            async processCommand(command) {
+                const responseArea = document.getElementById('response');
+                
+                // Add user input
+                responseArea.innerHTML += `<div><strong>आप:</strong> ${command}</div>`;
+                
+                // Show processing
+                document.getElementById('status').textContent = this.translations[this.currentLang].status_processing;
+
+                // Simple responses (you can expand this)
+                let response = await this.getResponse(command.toLowerCase());
+                
+                // Add AI response
+                responseArea.innerHTML += `<div><strong>VoiceAI:</strong> ${response}</div>`;
+                
+                // Reset status
+                this.updateStatus('idle');
+            }
+
+            async getResponse(command) {
+                // Quick responses for common queries
+                const responses = {
+                    en: {
+                        'hello': 'नमस्ते! मैं आपकी कैसे मदद कर सकता हूँ?',
+                        'how are you': 'मैं ठीक हूँ, धन्यवाद! आप कैसे हैं?',
+                        'time': `अभी समय है ${new Date().toLocaleTimeString(this.currentLang === 'en' ? 'en-US' : 'hi-IN')}`,
+                        'date': `आज ${new Date().toLocaleDateString(this.currentLang === 'en' ? 'en-US' : 'hi-IN')}`,
+                        'thank you': 'स्वागत है! 😊',
+                        'bye': 'अलविदा! फिर मिलेंगे।',
+                        'default': `मैंने सुना: "${command}". मैं आपकी और मदद कैसे करूँ?`
+                    },
+                    hi: {
+                        'नमस्ते': 'Hello! मैं आपकी कैसे मदद कर सकता हूँ?',
+                        'आप कैसे हैं': 'मैं ठीक हूँ, धन्यवाद! आप कैसे हैं?',
+                        'समय': `अभी समय है ${new Date().toLocaleTimeString('hi-IN')}`,
+                        'तारीख': `आज ${new Date().toLocaleDateString('hi-IN')}`,
+                        'धन्यवाद': 'You\'re welcome! 😊',
+                        'अलविदा': 'Goodbye! See you later.',
+                        'default': `मैंने सुना: "${command}". मैं आपकी और मदद कैसे करूँ?`
+                    }
+                };
+
+                // Check for keywords
+                for (let key in responses[this.currentLang]) {
+                    if (command.includes(key)) {
+                        return responses[this.currentLang][key];
+                    }
+                }
+
+                return responses[this.currentLang].default;
+            }
+
+            onEnd() {
+                this.isListening = false;
+                const micBtn = document.getElementById('micBtn');
+                micBtn.className = 'mic-btn mic-idle';
+                micBtn.title = this.translations[this.currentLang].mic_title_listen;
+            }
+
+            onError(event) {
+                console.error('Speech recognition error:', event.error);
+                this.updateStatus('idle');
+            }
+
+            updateStatus(state) {
+                const status = document.getElementById('status');
+                status.textContent = this.translations[this.currentLang][`status_${state}`];
+            }
+
+            clearResponse() {
+                document.getElementById('response').innerHTML = '';
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            new VoiceAssistant();
+        });
+    </script>
+</body>
+  </html>
